@@ -14,17 +14,15 @@ All rights reserved.
 More information about FLAME is available at http://flame.is.tue.mpg.de.
 For comments or questions, please email us at flame@tue.mpg.de
 '''
-
-
 import os
 import six
 import numpy as np
 import tensorflow as tf
-from psbody.mesh import Mesh
-from psbody.mesh.meshviewer import MeshViewer
 
 from tf_smpl.batch_smpl import SMPL
 from tensorflow.contrib.opt import ScipyOptimizerInterface as scipy_pt
+
+# print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 # Path of the FLAME model
 model_fname = os.path.join(os.getenv('HOME'), "projects/TF_FLAME", "models/generic_model.pkl")
@@ -52,8 +50,6 @@ def fit_3D_mesh(vertices, faces):
     :return: a mesh with the fitting results
     '''
 
-    target_mesh = Mesh(vertices, faces)
-
     tf_trans = tf.Variable(np.zeros((1,3)), name="trans", dtype=tf.float64, trainable=True)
     tf_rot = tf.Variable(np.zeros((1,3)), name="pose", dtype=tf.float64, trainable=True)
     tf_pose = tf.Variable(np.zeros((1,12)), name="pose", dtype=tf.float64, trainable=True)
@@ -67,7 +63,7 @@ def fit_3D_mesh(vertices, faces):
     with tf.Session() as session:
         session.run(tf.global_variables_initializer())
 
-        mesh_dist = tf.reduce_sum(tf.square(tf.subtract(tf_model, target_mesh.v)))
+        mesh_dist = tf.reduce_sum(tf.square(tf.subtract(tf_model, vertices)))
         neck_pose_reg = tf.reduce_sum(tf.square(tf_pose[:,:3]))
         jaw_pose_reg = tf.reduce_sum(tf.square(tf_pose[:,3:6]))
         eyeballs_pose_reg = tf.reduce_sum(tf.square(tf_pose[:,6:]))
@@ -91,10 +87,5 @@ def fit_3D_mesh(vertices, faces):
         optimizer.minimize(session)
 
         print('Fitting done')
-        print("tr tf_pose", tf_pose)
-        print("tr tf_rot", tf_rot)
-        print("tr trans", tf_trans)
-        print("tr tf_shape", tf_shape)
-        print("tr tf_exp", tf_exp)
 
-        return Mesh(session.run(tf_model), smpl.f), session.run(tf_pose), session.run(tf_rot), session.run(tf_trans), session.run(tf_shape), session.run(tf_exp)
+        return session.run(tf_model), session.run(tf_pose), session.run(tf_rot), session.run(tf_trans), session.run(tf_shape), session.run(tf_exp)

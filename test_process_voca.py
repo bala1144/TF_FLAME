@@ -1,18 +1,20 @@
-from voca_utils.process_voca import Data_binder, Data_generate_subseqs
 import os
 import numpy as np
-from psbody.mesh import Mesh
 import pickle
 from fit_3D_mesh_voca import fit_3D_mesh
-from utils.render_mesh import flame_render
+from utils.render_mesh import flame_render, Facerender
+from utils.stopwatch import Stopwatch
 import glob
 import cv2
+os.environ['PYOPENGL_PLATFORM'] = 'egl'
+from voca_utils.process_voca import Data_binder, Data_generate_subseqs
+import trimesh
 
 def test():
     dataset_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca")
     binder = Data_binder(dataset_path)
     # binder.run_bind("test", num_audio_feat=4)
-    binder.run_bind("train", num_audio_feat=4, suffix="FaceTalk_170904_00128_TA")
+    binder.run_bind("train", num_audio_feat=4, suffix="FaceTalk_170725_00137_TA")
     # binder.run_bind("val", num_audio_feat=4)
     # binder.run_bind("val")
 
@@ -75,14 +77,15 @@ def sequence_specific_fitting():
     font = cv2.FONT_HERSHEY_SIMPLEX
 
 
-    subject1 = "/Users/bthambiraja/projects/dataset/voca/trainFaceTalk_170904_00128_TA_ns40.pkl"
+    subject1 = os.path.join(dataset_path, "trainFaceTalk_170904_00128_TA_ns40.pkl")
     # subject2 = "/Users/bthambiraja/projects/dataset/voca/trainFaceTalk_170728_03272_TA_ns40.pkl"
     loaded_data = pickle.load(open(subject1, 'rb'), encoding="latin1")
 
     target_mesh_path = os.path.join(os.getenv('HOME'), "projects/TF_FLAME", "data/registered_mesh.ply")
-    target_mesh = Mesh(filename=target_mesh_path)
-    flames_faces = target_mesh.f
-    mesh_render = flame_render(width=512, height=512)
+    template_mesh = trimesh.load_mesh(target_mesh_path, process=False)
+    flames_faces = template_mesh.faces
+    # mesh_render = flame_render(width=512, height=512)
+    mesh_render = Facerender()
 
 
     fitted_results = {}
@@ -101,15 +104,27 @@ def sequence_specific_fitting():
         seq_out = os.path.join(outfile_path, seq)
         os.makedirs(seq_out, exist_ok=True)
 
-        for f_id in range(gt_mesh.shape[0]):
+        # random sample
+        num_verts = gt_mesh.shape[0]
+        import random
+        sample_idx = random.sample(range(0, num_verts), 5)
+
+        # for f_id in range(gt_mesh.shape[0]):
+        for f_id in sample_idx:
             print("running on frame", f_id)
-            result_mesh, pose, rot, trans, shape, exprs = fit_3D_mesh(gt_mesh[f_id], flames_faces)
+            
+            with Stopwatch("Fitting time") as stopwatch:
+                result_vertices, pose, rot, trans, shape, exprs = fit_3D_mesh(gt_mesh[f_id], flames_faces)
+            
             mesh_predictions.append([pose, rot, trans, shape, exprs])
-            result_meshes.append(result_mesh)
-            fitted_mesh_image = mesh_render.render_mesh(result_mesh.v, result_mesh.f)
+            result_meshes.append(result_vertices)
+
+            mesh_render.add_face(result_vertices, flames_faces)
+            fitted_mesh_image = mesh_render.render()
             cv2.putText(fitted_mesh_image, 'fitted', (20, 60), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
-            gt_image = mesh_render.render_mesh(gt_mesh[f_id], flames_faces)
+            mesh_render.add_face(gt_mesh[f_id], flames_faces)
+            gt_image = mesh_render.render()
             cv2.putText(gt_image, 'GT', (20, 60), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
             # render the mesh
