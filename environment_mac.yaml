@@ -1,0 +1,14 @@
+name: flame_fit_2
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.6
+  - pip
+  - numpy
+  - tensorflow
+  - pip:
+    - opencv-python
+    - ipython
+    - pyrender
+    - trimesh

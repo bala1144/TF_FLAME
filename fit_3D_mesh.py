@@ -26,6 +26,7 @@ from psbody.mesh.meshviewer import MeshViewer
 from tf_smpl.batch_smpl import SMPL
 from tensorflow.contrib.opt import ScipyOptimizerInterface as scipy_pt
 
+
 def fit_3D_mesh(target_3d_mesh_fname, model_fname, weights, show_fitting=True):
     '''
     Fit FLAME to 3D mesh in correspondence to the FLAME mesh (i.e. same number of vertices, same mesh topology)
@@ -74,6 +75,11 @@ def fit_3D_mesh(target_3d_mesh_fname, model_fname, weights, show_fitting=True):
         optimizer.minimize(session)
 
         print('Fitting done')
+        print("tr trans", tf_trans)
+        print("tr tf_rot", tf_rot)
+        print("tr tf_pose", tf_pose)
+        print("tr tf_shape", tf_shape)
+        print("tr tf_exp", tf_exp.value())
 
         if show_fitting:
             # Visualize fitting
