@@ -19,6 +19,8 @@ import six
 import numpy as np
 import tensorflow as tf
 
+from utils.stopwatch import Stopwatch
+import glob
 from tf_smpl.batch_smpl import SMPL
 from tensorflow.contrib.opt import ScipyOptimizerInterface as scipy_pt
 
@@ -50,15 +52,16 @@ def fit_3D_mesh(vertices, faces):
     :return: a mesh with the fitting results
     '''
 
-    tf_trans = tf.Variable(np.zeros((1,3)), name="trans", dtype=tf.float64, trainable=True)
-    tf_rot = tf.Variable(np.zeros((1,3)), name="pose", dtype=tf.float64, trainable=True)
-    tf_pose = tf.Variable(np.zeros((1,12)), name="pose", dtype=tf.float64, trainable=True)
-    tf_shape = tf.Variable(np.zeros((1,300)), name="shape", dtype=tf.float64, trainable=True)
-    tf_exp = tf.Variable(np.zeros((1,100)), name="expression", dtype=tf.float64, trainable=True)
-    smpl = SMPL(model_fname)
-    tf_model = tf.squeeze(smpl(tf_trans,
-                               tf.concat((tf_shape, tf_exp), axis=-1),
-                               tf.concat((tf_rot, tf_pose), axis=-1)))
+    with Stopwatch("creating  variable") as stopwatch:
+        tf_trans = tf.Variable(np.zeros((1,3)), name="trans", dtype=tf.float64, trainable=True)
+        tf_rot = tf.Variable(np.zeros((1,3)), name="pose", dtype=tf.float64, trainable=True)
+        tf_pose = tf.Variable(np.zeros((1,12)), name="pose", dtype=tf.float64, trainable=True)
+        tf_shape = tf.Variable(np.zeros((1,300)), name="shape", dtype=tf.float64, trainable=True)
+        tf_exp = tf.Variable(np.zeros((1,100)), name="expression", dtype=tf.float64, trainable=True)
+        smpl = SMPL(model_fname)
+        tf_model = tf.squeeze(smpl(tf_trans,
+                                tf.concat((tf_shape, tf_exp), axis=-1),
+                                tf.concat((tf_rot, tf_pose), axis=-1)))
 
     with tf.Session() as session:
         session.run(tf.global_variables_initializer())

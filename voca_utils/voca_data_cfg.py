@@ -37,6 +37,14 @@ def set_default_paramters(config):
                 "sentence31 sentence32 sentence33 sentence34 sentence35 sentence36 sentence37 sentence38 sentence39 sentence40")
     config.set('Data Setup', 'num_consecutive_frames', '10')  # 2
 
+    config.set('Data Setup', 'all_subjects',
+            "FaceTalk_170728_03272_TA FaceTalk_170904_00128_TA FaceTalk_170725_00137_TA FaceTalk_170915_00223_TA "
+            "FaceTalk_170811_03274_TA FaceTalk_170913_03279_TA FaceTalk_170904_03276_TA FaceTalk_170912_03278_TA "
+            "FaceTalk_170811_03275_TA FaceTalk_170908_03277_TA FaceTalk_170809_00138_TA FaceTalk_170731_00024_TA")
+
+
+
+
 
 def create_default_config(fname):
     config = configparser.ConfigParser()
@@ -58,5 +66,6 @@ def get_default_config():
     config_parms['subject_for_testing'] = config.get('Data Setup', 'subject_for_testing')
     config_parms['sequence_for_testing'] = config.get('Data Setup', 'sequence_for_testing')
     config_parms['num_consecutive_frames'] = config.get('Data Setup', 'num_consecutive_frames')
+    config_parms['all_subjects'] = config.get('Data Setup', 'all_subjects')
 
     return config_parms

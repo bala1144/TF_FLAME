@@ -9,6 +9,7 @@ import cv2
 os.environ['PYOPENGL_PLATFORM'] = 'egl'
 from voca_utils.process_voca import Data_binder, Data_generate_subseqs
 import trimesh
+from voca_utils.voca_data_cfg import get_default_config
 
 def test():
     dataset_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca")
@@ -67,7 +68,6 @@ def save_sample_voca_meshes():
     #     result_mesh, pose, rot, trans, shape, exprs = fit_3D_mesh(mesh.v, mesh.f)
     #     out_mesh = os.path.join(template_outfile_path, key + ".ply")
     #     mesh.write_ply(out_mesh)
-
 
 def sequence_specific_fitting():
 
@@ -141,8 +141,24 @@ def sequence_specific_fitting():
     pickle.dump(fitted_results, open(out_file, "wb"))
 
 
+def split_based_on_seq():
+    dataset_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca")
+    binder = Data_binder(dataset_path)
+
+    params = get_default_config()
+    seqs_list = params["sequence_for_training"].split()
+    subjects = params["all_subjects"].split()
+
+    for seq in seqs_list:
+        print("Running on seq", seq)
+        binder.run_bind_seqwise([seq], subjects)
+
+
+
+
 if __name__ == "__main__":
     # test()
     # save_sample_voca_meshes()
-    sequence_specific_fitting()
+    # sequence_specific_fitting()
     # fitting_voca()
+    # split_based_on_seq()

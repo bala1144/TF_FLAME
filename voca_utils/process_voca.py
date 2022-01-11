@@ -25,12 +25,14 @@ class Data_binder():
         counter = 0
         for i, subj_name in enumerate(process_subjects):
             # print()
-            print("process_subjects", process_subjects)
+            # print("process_subjects", process_subjects)
             # print("self.default_loaded_data.data2array_verts[subj_name]", self.default_loaded_data.data2array_verts[subj_name])
             # print()
             for j, sentence_name in enumerate(process_seq):
-                seq_name = subj_name + "_" + sentence_name
+                # seq_name = subj_name + "_" + sentence_name
+                seq_name = subj_name
                 print(seq_name)
+                exprs = self.default_loaded_data.data2array_verts[subj_name].get(sentence_name, None)
                 exprs = self.default_loaded_data.data2array_verts[subj_name].get(sentence_name, None)
 
                 if exprs is None:
@@ -107,6 +109,17 @@ class Data_binder():
         pickle.dump(data_dict, open(out_file, "wb"))
         print('Done writing')
         print()
+    
+    def run_bind_seqwise(self, process_seq, process_subjects, num_audio_feat=16):
+
+        data_dict = self._bind(process_seq, process_subjects, num_audio_feat)
+        num_seq_in_dict = len(data_dict)-2
+        out_file = os.path.join(self.dataset_root, process_seq[0]+"_ns%s.pkl"%num_seq_in_dict)
+        print('Writinfg pickle file', out_file)
+        pickle.dump(data_dict, open(out_file, "wb"))
+        print('Done writing')
+        print()
+
 
 class Data_generate_subseqs():
 
