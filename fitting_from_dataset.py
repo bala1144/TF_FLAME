@@ -8,8 +8,30 @@ import os
 os.environ['PYOPENGL_PLATFORM'] = 'egl'
 import trimesh
 import argparse
+from FLAMEModel.FLAME import FLAME
+import torch
 
 font = cv2.FONT_HERSHEY_SIMPLEX
+
+flame_config = {
+"shape_params": 0,
+"expression_params": 100,
+"pose_params": 0,
+"use_3D_translation": False,
+"optimize_eyeballpose": False,
+"optimize_neckpose": False,
+"num_worker": 8,
+"batch_size": 1  # set this to batch size * num_subwindow_samples * subsample_window_len
+}
+
+def get_flame_face_given_expression(flame_model, exprs):
+
+    exprs = torch.from_numpy(exprs).float()
+    if torch.cuda.is_available():
+        exprs = exprs.to_cuda()
+
+    vertices = flame_model.morph(exprs).numpy()
+    return vertices
 
 def sequence_specific_fitting(dataset_file):
 
@@ -21,11 +43,19 @@ def sequence_specific_fitting(dataset_file):
     dataset_file = os.path.join(dataset_path, dataset_file)
     loaded_data = pickle.load(open(dataset_file, 'rb'), encoding="latin1")
 
-    target_mesh_path = os.path.join(os.getenv('HOME'), "projects/TF_FLAME", "data/registered_mesh.ply")
-    template_mesh = trimesh.load_mesh(target_mesh_path, process=False)
-    flames_faces = template_mesh.faces
+    # target_mesh_path = os.path.join(os.getenv('HOME'), "projects/TF_FLAME", "data/registered_mesh.ply")
+    # template_mesh = trimesh.load_mesh(target_mesh_path, process=False)
+    # flames_faces = template_mesh.faces
 
     # mesh_render = Facerender()
+    flame_config["batch_size"] = 1
+    flame_config["flame_model_path"] = os.path.join(os.getenv('HOME'), "projects/TF_FLAME/FLAMEModel", "model/generic_model.pkl")
+    flamelayer = FLAME(flame_config)
+    flames_faces = flamelayer.faces
+    if torch.cuda.is_available():
+        flamelayer.to_cuda()
+
+
 
     fitted_results = {}
     for seq, seq_dict in loaded_data.items():
@@ -54,8 +84,11 @@ def sequence_specific_fitting(dataset_file):
             mesh_predictions.append([pose, rot, trans, shape, exprs])
             result_meshes.append(result_vertices)
 
+            face_with_exprs = get_flame_face_given_expression(flamelayer, exprs)[0]
+
             # render the images
-            # write_image(mesh_render, result_vertices, gt_mesh[f_id], flames_faces, seq_out, f_id)
+            # write_image(mesh_render, result_vertices, gt_mesh[f_id], flames_faces, seq_out, f_id, face_with_exprs)
+            print()
 
         # store them as video and images
         fitted_results[seq] = mesh_predictions
@@ -71,7 +104,7 @@ def sequence_specific_fitting(dataset_file):
     pickle.dump(fitted_results, open(out_file, "wb"))
 
 
-def write_image(mesh_render, result_vertices, gt_vertices, flames_faces, seq_out, f_id):
+def write_image(mesh_render, result_vertices, gt_vertices, flames_faces, seq_out, f_id, face_with_exprs=None):
 
     mesh_render.add_face(result_vertices, flames_faces)
     fitted_mesh_image = mesh_render.render()
@@ -80,9 +113,16 @@ def write_image(mesh_render, result_vertices, gt_vertices, flames_faces, seq_out
     mesh_render.add_face(gt_vertices, flames_faces)
     gt_image = mesh_render.render()
     cv2.putText(gt_image, 'GT', (20, 60), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
-
     # render the mesh
     final_image = np.concatenate([gt_image, fitted_mesh_image], axis=1)
+
+    if face_with_exprs is None:
+        mesh_render.add_face(face_with_exprs, flames_faces)
+        face_with_exprs_image = mesh_render.render()
+        cv2.putText(face_with_exprs_image, 'Flame_exprs_only', (20, 60), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
+        # render the mesh
+        final_image = np.concatenate([final_image, face_with_exprs_image], axis=1)
+
     file_out = os.path.join(seq_out, "frame%05d.png" % f_id)
     print("Storing rendered files", file_out)
     cv2.imwrite(file_out, final_image)

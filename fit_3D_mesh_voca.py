@@ -27,7 +27,7 @@ from tensorflow.contrib.opt import ScipyOptimizerInterface as scipy_pt
 # print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 # Path of the FLAME model
-model_fname = os.path.join(os.getenv('HOME'), "projects/TF_FLAME", "models/generic_model.pkl")
+model_fname = os.path.join(os.getenv('HOME'), "projects/TF_FLAME", "FLAMEModel/model/generic_model.pkl")
 weights = {}
 # Weight of the data term
 weights['data'] = 1000.0
