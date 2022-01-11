@@ -73,7 +73,7 @@ class Data_binder():
 
                 # create the sample dict
                 data_dict[seq_name]={"seq_name":seq_name,
-                                    "exprs":expression,
+                                    "mesh":expression,
                                     "audio_feat":processed_audio,
                                     "processed_audio_sample_rate":processed_audio_sample_rate,
                                     "raw_audio":raw_audio,

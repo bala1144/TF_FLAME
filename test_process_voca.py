@@ -162,3 +162,4 @@ if __name__ == "__main__":
     # sequence_specific_fitting()
     # fitting_voca()
     # split_based_on_seq()
+    split_based_on_seq()
