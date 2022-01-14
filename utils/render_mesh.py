@@ -10,7 +10,8 @@ from scipy.spatial.transform import Rotation
 from pyrender import RenderFlags
 import os
 
-os.environ['PYOPENGL_PLATFORM'] = 'egl'
+# os.environ['PYOPENGL_PLATFORM'] = 'egl'
+# os.environ['PYOPENGL_PLATFORM'] = 'osmesa'
 
 class flame_render:
 

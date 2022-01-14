@@ -29,8 +29,8 @@ class Data_binder():
             # print("self.default_loaded_data.data2array_verts[subj_name]", self.default_loaded_data.data2array_verts[subj_name])
             # print()
             for j, sentence_name in enumerate(process_seq):
-                # seq_name = subj_name + "_" + sentence_name
-                seq_name = subj_name
+                seq_name = subj_name + "_" + sentence_name
+                # seq_name = subj_name
                 print(seq_name)
                 exprs = self.default_loaded_data.data2array_verts[subj_name].get(sentence_name, None)
                 exprs = self.default_loaded_data.data2array_verts[subj_name].get(sentence_name, None)
@@ -114,7 +114,8 @@ class Data_binder():
 
         data_dict = self._bind(process_seq, process_subjects, num_audio_feat)
         num_seq_in_dict = len(data_dict)-2
-        out_file = os.path.join(self.dataset_root, process_seq[0]+"_ns%s.pkl"%num_seq_in_dict)
+        # out_file = os.path.join(self.dataset_root, process_seq[0]+"_ns%s.pkl"%num_seq_in_dict)
+        out_file = os.path.join(self.dataset_root, process_seq[0]+".pkl")
         print('Writinfg pickle file', out_file)
         pickle.dump(data_dict, open(out_file, "wb"))
         print('Done writing')

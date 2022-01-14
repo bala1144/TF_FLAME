@@ -5,7 +5,8 @@ from utils.render_mesh import flame_render, Facerender
 from utils.stopwatch import Stopwatch
 import cv2
 import os
-os.environ['PYOPENGL_PLATFORM'] = 'egl'
+# os.environ['PYOPENGL_PLATFORM'] = 'osmesa'
+# os.environ['PYOPENGL_PLATFORM'] = 'egl'
 import trimesh
 import argparse
 from FLAMEModel.FLAME import FLAME
@@ -28,9 +29,9 @@ def get_flame_face_given_expression(flame_model, exprs):
 
     exprs = torch.from_numpy(exprs).float()
     if torch.cuda.is_available():
-        exprs = exprs.to_cuda()
+        exprs = exprs.cuda()
 
-    vertices = flame_model.morph(exprs).numpy()
+    vertices = flame_model.morph(exprs).cpu().numpy()
     return vertices
 
 def sequence_specific_fitting(dataset_file):
@@ -43,19 +44,13 @@ def sequence_specific_fitting(dataset_file):
     dataset_file = os.path.join(dataset_path, dataset_file)
     loaded_data = pickle.load(open(dataset_file, 'rb'), encoding="latin1")
 
-    # target_mesh_path = os.path.join(os.getenv('HOME'), "projects/TF_FLAME", "data/registered_mesh.ply")
-    # template_mesh = trimesh.load_mesh(target_mesh_path, process=False)
-    # flames_faces = template_mesh.faces
-
     # mesh_render = Facerender()
     flame_config["batch_size"] = 1
     flame_config["flame_model_path"] = os.path.join(os.getenv('HOME'), "projects/TF_FLAME/FLAMEModel", "model/generic_model.pkl")
     flamelayer = FLAME(flame_config)
     flames_faces = flamelayer.faces
     if torch.cuda.is_available():
-        flamelayer.to_cuda()
-
-
+        flamelayer.cuda()
 
     fitted_results = {}
     for seq, seq_dict in loaded_data.items():
@@ -74,6 +69,12 @@ def sequence_specific_fitting(dataset_file):
         os.makedirs(seq_out, exist_ok=True)
 
         previous_state_variable = None
+
+        num_verts = gt_mesh.shape[0]
+        import random
+        sample_idx = list(random.sample(range(0, num_verts), 5))
+        sample_idx.extend([0,10,20])
+
         for f_id in range(gt_mesh.shape[0]):
             print("\nrunning on frame", f_id)
             
@@ -84,11 +85,10 @@ def sequence_specific_fitting(dataset_file):
             mesh_predictions.append([pose, rot, trans, shape, exprs])
             result_meshes.append(result_vertices)
 
-            face_with_exprs = get_flame_face_given_expression(flamelayer, exprs)[0]
-
-            # render the images
-            # write_image(mesh_render, result_vertices, gt_mesh[f_id], flames_faces, seq_out, f_id, face_with_exprs)
-            print()
+            # if f_id in sample_idx:
+            #     face_with_exprs = get_flame_face_given_expression(flamelayer, exprs)[0]
+            #     # render the images
+            #     write_image(mesh_render, result_vertices, gt_mesh[f_id], flames_faces, seq_out, f_id, face_with_exprs)
 
         # store them as video and images
         fitted_results[seq] = mesh_predictions
@@ -116,7 +116,7 @@ def write_image(mesh_render, result_vertices, gt_vertices, flames_faces, seq_out
     # render the mesh
     final_image = np.concatenate([gt_image, fitted_mesh_image], axis=1)
 
-    if face_with_exprs is None:
+    if face_with_exprs is not None:
         mesh_render.add_face(face_with_exprs, flames_faces)
         face_with_exprs_image = mesh_render.render()
         cv2.putText(face_with_exprs_image, 'Flame_exprs_only', (20, 60), font, 1, (0, 255, 0), 2, cv2.LINE_AA)

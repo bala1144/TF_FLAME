@@ -140,19 +140,28 @@ def sequence_specific_fitting():
     out_file = os.path.join(outfile_path, "fitted_params.pkl")
     pickle.dump(fitted_results, open(out_file, "wb"))
 
-
 def split_based_on_seq():
     dataset_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca")
-    binder = Data_binder(dataset_path)
+    # binder = Data_binder(dataset_path)clear
 
     params = get_default_config()
     seqs_list = params["sequence_for_training"].split()
     subjects = params["all_subjects"].split()
 
-    for seq in seqs_list:
-        print("Running on seq", seq)
-        binder.run_bind_seqwise([seq], subjects)
+    for sub in subjects:
+        for seq in seqs_list:
+            # print("Running on seq", seq)
+            print(sub+"_"+seq)
+        # binder.run_bind_seqwise([seq], subjects)
 
+# def extract_all_seq():
+#     dataset_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca")
+#     binder = Data_binder(dataset_path)
+
+#     params = get_default_config()
+#     seqs_list = params["sequence_for_training"].split()
+#     subjects = params["all_subjects"].split()
+#     binder.run_bind_seqwise(seqs_list, subjects)
 
 
 
