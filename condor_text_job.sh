@@ -3,7 +3,7 @@
 # # default parameters
 BID=$1
 NODE_CONFIG=./condor/default_node_config.sub
-MULTI_CONFIG_FILE=./all_voca_data_splits_rerun2.txt
+MULTI_CONFIG_FILE=./all_combo.txt
 
 # FOR THE RESUME JOB
 NODE_SCRIPT=./condor/job.sh

@@ -9,10 +9,9 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:$PATH
 export HOME="/home/bthambiraja"
 
-echo 'START JOB (VQGAN training)'
+echo 'START data processing for'
 
 source /etc/profile.d/modules.sh
-module load cuda/10.2
 
 echo 'ACTIVATE CONDA flame_fit_2'
 source ${PYTHON_ENV}
@@ -25,4 +24,4 @@ echo 'ScriptDir' ${SCRIPT_DIR}
 echo 'CONFIG: ' ${CONFIG}
 cd ${SCRIPT_DIR}/..
 echo "Script executed from: ${PWD}"
-python ./fitting_from_dataset.py -d ${CONFIG}
+python ./fitting_from_dataset_persubseqwise.py -d ${CONFIG}

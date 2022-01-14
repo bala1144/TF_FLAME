@@ -5,7 +5,7 @@ BID=$1
 NODE_CONFIG=./condor/default_node_config.sub
 
 # # # for training
-CONFIG=sentence21_ns12.pkl
+CONFIG=FaceTalk_170915_00223_TA_sentence20
 NODE_SCRIPT=./condor/job.sh
 # set parameters
 if [ -n "$1" ]; then BID=${1}; fi

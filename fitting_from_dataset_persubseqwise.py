@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import numpy as np
 import pickle
 from fit_3D_mesh_voca import fit_3D_mesh, fit_3D_mesh_with_init
@@ -11,6 +12,7 @@ import trimesh
 import argparse
 from FLAMEModel.FLAME import FLAME
 import torch
+import copy
 
 font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -44,31 +46,37 @@ def sequence_specific_fitting(dataset_file):
     outfile_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca", "subj_seq_fitting_results", subj_name)
     os.makedirs(outfile_path, exist_ok=True)
 
+    # tracker file
+    tracker_file = os.path.join(outfile_path, dataset_file+".txt")
+
     # extract current subject name
-    dataset_file = os.path.join(dataset_path, seq_name+".pkl")
-    print("Loading data file", dataset_file)
-    loaded_data = pickle.load(open(dataset_file, 'rb'), encoding="latin1")
-    print(loaded_data.keys())
+    in_dataset_file = os.path.join(dataset_path, seq_name+".pkl")
+    print("Loading data file", in_dataset_file)
+    loaded_data = pickle.load(open(in_dataset_file, 'rb'), encoding="latin1")
     seq_dict = loaded_data[dataset_file]
 
-    # # extract the mesh
-    # gt_mesh = seq_dict["mesh"]
-    # mesh_predictions = []
-    # previous_state_variable = None
+    # extract the mesh
+    gt_mesh = seq_dict["mesh"]
+    mesh_predictions = []
+    previous_state_variable = None
 
-    # for f_id in range(gt_mesh.shape[0]):
-    #     print("\nrunning on frame", f_id)
+    for f_id in range(gt_mesh.shape[0]):
+        print("\nrunning on frame", f_id)
         
-    #     with Stopwatch("Fitting time") as stopwatch:
-    #         result_vertices, pose, rot, trans, shape, exprs, previous_state_variable = \
-    #             fit_3D_mesh_with_init(gt_mesh[f_id], init_state=previous_state_variable)
+        with Stopwatch("Fitting time") as stopwatch:
+            result_vertices, pose, rot, trans, shape, exprs, previous_state_variable = \
+                fit_3D_mesh_with_init(gt_mesh[f_id], init_state=previous_state_variable)
         
-    #     mesh_predictions.append([result_vertices, pose, rot, trans, shape, exprs])
+        mesh_predictions.append([result_vertices, pose, rot, trans, shape, exprs])
 
-    # # store results for this particular seq
-    # current_seq_results = {dataset_file : mesh_predictions}
-    # current_seq_out_file = os.path.join(outfile_path, dataset_file+".pkl")
-    # pickle.dump(current_seq_results, open(current_seq_out_file, "wb"))
+        with open(tracker_file, "a") as myfile:
+            myfile.write("completed %d\n"%f_id)
+
+    # store results for this particular seq
+    current_seq_results = {dataset_file : mesh_predictions}
+    current_seq_out_file = os.path.join(outfile_path, dataset_file+".pkl")
+    print("results are stored to", current_seq_out_file)
+    pickle.dump(current_seq_results, open(current_seq_out_file, "wb"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='sequence_specific_fitting')
