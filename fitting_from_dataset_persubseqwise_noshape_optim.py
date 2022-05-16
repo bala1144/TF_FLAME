@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 import pickle
-from fit_3D_mesh_voca import fit_3D_mesh, fit_3D_mesh_with_init
+from fit_3D_mesh_voca_noshape_optim import fit_3D_mesh_with_init
 from utils.render_mesh import flame_render, Facerender
 from utils.stopwatch import Stopwatch
 import cv2
@@ -13,6 +13,7 @@ import argparse
 from FLAMEModel.FLAME import FLAME
 import torch
 import copy
+import tensorflow as tf
 
 font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -43,7 +44,7 @@ def sequence_specific_fitting(dataset_file):
     print(seq_name, subj_name)
 
     dataset_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca", "seqwise_spilted_data")
-    outfile_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca", "subj_seq_fitting_results", subj_name)
+    outfile_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca", "subj_seq_fitting_results_w_mean_shape", subj_name)
     os.makedirs(outfile_path, exist_ok=True)
 
     # tracker file
@@ -54,6 +55,14 @@ def sequence_specific_fitting(dataset_file):
     print("Loading data file", in_dataset_file)
     loaded_data = pickle.load(open(in_dataset_file, 'rb'), encoding="latin1")
     seq_dict = loaded_data[dataset_file]
+
+    # extract the identity shape that we computed from the previous iteration
+    subjectwise_mean_shape_file = os.path.join(os.getenv('HOME'), "projects/dataset/voca", "subjectwise_mean_shape.pkl")
+    loaded_shape_data = pickle.load(open(subjectwise_mean_shape_file, 'rb'), encoding="latin1")
+    current_mean_shape_params = loaded_shape_data[subj_name].reshape(1,-1)
+    mean_tf_shape = tf.Variable(current_mean_shape_params, name="shape", dtype=tf.float64, trainable=False)
+
+    print()
 
     # extract the mesh
     gt_mesh = seq_dict["mesh"]
@@ -70,7 +79,7 @@ def sequence_specific_fitting(dataset_file):
         
         with Stopwatch("Fitting time") as stopwatch:
             result_vertices, pose, rot, trans, shape, exprs, previous_state_variable = \
-                fit_3D_mesh_with_init(gt_mesh[f_id], init_state=previous_state_variable)
+                fit_3D_mesh_with_init(gt_mesh[f_id], mean_tf_shape, init_state=previous_state_variable)
         
         mesh_predictions.append([result_vertices, pose, rot, trans, shape, exprs])
 

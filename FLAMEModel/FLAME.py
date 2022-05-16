@@ -19,6 +19,7 @@ For questions regarding the PyTorch implementation please contact soubhik.sanyal
 """
 # Modified from smplx code [https://github.com/vchoutas/smplx] for FLAMEModel
 
+from email.errors import NonPrintableDefect
 import numpy as np
 import torch
 import torch.nn as nn
@@ -30,6 +31,7 @@ class dict_to_module(object):
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
             setattr(self, key, val)
+import torch
 
 class FLAME(nn.Module):
     """
@@ -127,89 +129,47 @@ class FLAME(nn.Module):
         self.register_buffer('lbs_weights',
                              to_tensor(to_np(self.flame_model.weights), dtype=self.dtype))
 
-    #     # Static and Dynamic Landmark embeddings for FLAMEModel
-    #
-    #     with open(config.static_landmark_embedding_path, 'rb') as f:
-    #         static_embeddings = Struct(**pickle.load(f, encoding='latin1'))
-    #
-    #     lmk_faces_idx = (static_embeddings.lmk_face_idx).astype(np.int64)
-    #     self.register_buffer('lmk_faces_idx',
-    #                          torch.tensor(lmk_faces_idx, dtype=torch.long))
-    #     lmk_bary_coords = static_embeddings.lmk_b_coords
-    #     self.register_buffer('lmk_bary_coords',
-    #                          torch.tensor(lmk_bary_coords, dtype=self.dtype))
-    #
-    #     if self.use_face_contour:
-    #         conture_embeddings = np.load(config.dynamic_landmark_embedding_path,
-    #             allow_pickle=True, encoding='latin1')
-    #         conture_embeddings = conture_embeddings[()]
-    #         dynamic_lmk_faces_idx = np.array(conture_embeddings['lmk_face_idx']).astype(np.int64)
-    #         dynamic_lmk_faces_idx = torch.tensor(
-    #             dynamic_lmk_faces_idx,
-    #             dtype=torch.long)
-    #         self.register_buffer('dynamic_lmk_faces_idx',
-    #                              dynamic_lmk_faces_idx)
-    #
-    #         dynamic_lmk_bary_coords = conture_embeddings['lmk_b_coords']
-    #         dynamic_lmk_bary_coords = torch.tensor(
-    #             dynamic_lmk_bary_coords, dtype=self.dtype)
-    #         self.register_buffer('dynamic_lmk_bary_coords',
-    #                              dynamic_lmk_bary_coords)
-    #
-    #         neck_kin_chain = []
-    #         curr_idx = torch.tensor(self.NECK_IDX, dtype=torch.long)
-    #         while curr_idx != -1:
-    #             neck_kin_chain.append(curr_idx)
-    #             curr_idx = self.parents[curr_idx]
-    #         self.register_buffer('neck_kin_chain',
-    #                              torch.stack(neck_kin_chain))
-    #
-    # def _find_dynamic_lmk_idx_and_bcoords(self, vertices, pose, dynamic_lmk_faces_idx,
-    #                                      dynamic_lmk_b_coords,
-    #                                      neck_kin_chain, dtype=torch.float32):
-    #     """
-    #         Selects the face contour depending on the reletive position of the head
-    #         Input:
-    #             vertices: N X num_of_vertices X 3
-    #             pose: N X full pose
-    #             dynamic_lmk_faces_idx: The list of contour face indexes
-    #             dynamic_lmk_b_coords: The list of contour barycentric weights
-    #             neck_kin_chain: The tree to consider for the relative rotation
-    #             dtype: Data type
-    #         return:
-    #             The contour face indexes and the corresponding barycentric weights
-    #         Source: Modified for batches from https://github.com/vchoutas/smplx
-    #     """
-    #
-    #     batch_size = vertices.shape[0]
-    #
-    #     aa_pose = torch.index_select(pose.view(batch_size, -1, 3), 1,
-    #                                  neck_kin_chain)
-    #     rot_mats = batch_rodrigues(
-    #         aa_pose.view(-1, 3)).view(batch_size, -1, 3, 3)
-    #
-    #     rel_rot_mat = torch.eye(3, device=vertices.device,
-    #                             dtype=dtype).unsqueeze_(dim=0).expand(batch_size, -1, -1)
-    #     for idx in range(len(neck_kin_chain)):
-    #         rel_rot_mat = torch.bmm(rot_mats[:, idx], rel_rot_mat)
-    #
-    #     y_rot_angle = torch.round(
-    #         torch.clamp(-rot_mat_to_euler(rel_rot_mat) * 180.0 / np.pi,
-    #                     max=39)).to(dtype=torch.long)
-    #     neg_mask = y_rot_angle.lt(0).to(dtype=torch.long)
-    #     mask = y_rot_angle.lt(-39).to(dtype=torch.long)
-    #     neg_vals = mask * 78 + (1 - mask) * (39 - y_rot_angle)
-    #     y_rot_angle = (neg_mask * neg_vals +
-    #                    (1 - neg_mask) * y_rot_angle)
-    #
-    #     dyn_lmk_faces_idx = torch.index_select(dynamic_lmk_faces_idx,
-    #                                            0, y_rot_angle)
-    #     dyn_lmk_b_coords = torch.index_select(dynamic_lmk_b_coords,
-    #                                           0, y_rot_angle)
-    #
-    #     return dyn_lmk_faces_idx, dyn_lmk_b_coords
 
-    # def forward(self, shape_params=None, expression_params=None, pose_params=None, neck_pose=None, eye_pose=None, transl=None):
+    def morph(self, expression_params=None,  neck_pose=None, jaw_pose=None, eye_pose=None, transl=None, shape_params=None):
+        """
+            Input:
+                shape_params: N X number of shape parameters
+                expression_params: N X number of expression parameters
+                pose_params: N X number of pose parameters
+            return:
+                vertices: N X V X 3
+                landmarks: N X number of landmarks X 3
+        """
+        shape_params = (shape_params if shape_params is not None else self.shape_betas)
+        betas = torch.cat([shape_params, expression_params], dim=1)
+
+        neck_pose = (neck_pose if neck_pose is not None else self.neck_pose)
+        eye_pose = (eye_pose if eye_pose is not None else self.eye_pose)
+        jaw_pose = (jaw_pose if jaw_pose is not None else self.default_pose[:,:3])
+        # print("Shape params",shape_params.shape )
+        # print("expression", expression_params.shape)
+        # print("jaw pose", jaw_pose.shape)
+        # print("eye_pose pose", eye_pose.shape)
+        # print("neck_pose pose", neck_pose.shape)
+
+        
+        full_pose = torch.cat([self.default_pose[:,:3], neck_pose, jaw_pose, eye_pose], dim=1) # N x 15
+        template_vertices = self.v_template.unsqueeze(0).repeat(self.batch_size, 1, 1)
+
+        transl = (transl if transl is not None else self.transl)
+        vertices, _ = lbs(betas, full_pose, template_vertices,
+                               self.shapedirs, self.posedirs,
+                               self.J_regressor, self.parents,
+                               self.lbs_weights)
+
+        if self.use_3D_translation:
+            vertices += transl.unsqueeze(dim=1)
+
+        return vertices
+
+
+
+    # def morph(self, expression_params=None, pose=None, neck_pose=None, eye_pose=None, transl=None, shape_params=None):
     #     """
     #         Input:
     #             shape_params: N X number of shape parameters
@@ -219,11 +179,42 @@ class FLAME(nn.Module):
     #             vertices: N X V X 3
     #             landmarks: N X number of landmarks X 3
     #     """
-    #     betas = torch.cat([shape_params, self.shape_betas, expression_params, self.expression_betas], dim=1)
+    #     # print("morph", self.shape_betas.shape, expression_params.shape, self.expression_betas.shape)
+    #     print("Shape params",shape_params.shape )
+    #     print("expression", expression_params)
+    #     print("jaw pose", pose)
+
+    #     # expression_params.zero_()
+    #     # expression_params[0,0] = 3
+    #     # print("expression", expression_params)
+    #     shape_params.zero_()
+
+    #     shape_params = (shape_params if shape_params is not None else self.shape_betas)
+    #     betas = torch.cat([shape_params, expression_params], dim=1)
     #     neck_pose = (neck_pose if neck_pose is not None else self.neck_pose)
     #     eye_pose = (eye_pose if eye_pose is not None else self.eye_pose)
     #     transl = (transl if transl is not None else self.transl)
-    #     full_pose = 
+    #     print("pose", pose.shape)
+    #     print("self.default_pose", self.default_pose.shape)
+    #     print("neck pose", neck_pose.shape)
+    #     print("eye_pose pose", eye_pose.shape)
+
+    #     pose = (pose if pose is not None else self.default_pose)
+    #     # pose.zero_()
+
+    #     # pose = self.default_pose
+    #     # full_pose =torch.cat([self.default_pose[:,:3], neck_pose, self.default_pose[:,3:], eye_pose], dim=1)
+    #     # full_pose =torch.cat([self.default_pose[:,:3], neck_pose, pose[:,3:6], eye_pose], dim=1)
+    #     # full_pose =torch.cat([pose[:,:3], neck_pose, self.default_pose[:,:3], eye_pose], dim=1)
+    #     full_pose = torch.cat([ self.default_pose[:,:3], pose], dim=1)
+    #     # print("Full pose before", full_pose)
+    #     # pi = 3.14
+    #     # full_pose[0, 6] = 0.5 * pi
+    #     # print("Full pose after", full_pose)        
+    #     # full_pose = 
+    #     # global rotation, neck pose, jaw_pose, left eye, right eye
+
+        
     #     template_vertices = self.v_template.unsqueeze(0).repeat(self.batch_size, 1, 1)
 
     #     vertices, _ = lbs(betas, full_pose, template_vertices,
@@ -235,32 +226,3 @@ class FLAME(nn.Module):
     #         vertices += transl.unsqueeze(dim=1)
 
     #     return vertices
-
-
-    def morph(self, expression_params=None, neck_pose=None, eye_pose=None, transl=None):
-        """
-            Input:
-                shape_params: N X number of shape parameters
-                expression_params: N X number of expression parameters
-                pose_params: N X number of pose parameters
-            return:
-                vertices: N X V X 3
-                landmarks: N X number of landmarks X 3
-        """
-        # print("morph", self.shape_betas.shape, expression_params.shape, self.expression_betas.shape)
-        betas = torch.cat([self.shape_betas, expression_params, self.expression_betas], dim=1)
-        neck_pose = (neck_pose if neck_pose is not None else self.neck_pose)
-        eye_pose = (eye_pose if eye_pose is not None else self.eye_pose)
-        transl = (transl if transl is not None else self.transl)
-        full_pose =torch.cat([self.default_pose[:,:3], neck_pose, self.default_pose[:,3:], eye_pose], dim=1)
-        template_vertices = self.v_template.unsqueeze(0).repeat(self.batch_size, 1, 1)
-
-        vertices, _ = lbs(betas, full_pose, template_vertices,
-                               self.shapedirs, self.posedirs,
-                               self.J_regressor, self.parents,
-                               self.lbs_weights)
-
-        if self.use_3D_translation:
-            vertices += transl.unsqueeze(dim=1)
-
-        return vertices

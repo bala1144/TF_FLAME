@@ -17,11 +17,11 @@ import configparser
 def set_default_paramters(config):
 
     config.add_section('Data Setup')
-    # config.set('Data Setup', 'subject_for_training',
-               # "FaceTalk_170728_03272_TA FaceTalk_170904_00128_TA FaceTalk_170725_00137_TA FaceTalk_170915_00223_TA "
-               # "FaceTalk_170811_03274_TA FaceTalk_170913_03279_TA FaceTalk_170904_03276_TA FaceTalk_170912_03278_TA")
     config.set('Data Setup', 'subject_for_training',
-               "FaceTalk_170725_00137_TA")
+               "FaceTalk_170728_03272_TA FaceTalk_170904_00128_TA FaceTalk_170725_00137_TA FaceTalk_170915_00223_TA "
+               "FaceTalk_170811_03274_TA FaceTalk_170913_03279_TA FaceTalk_170904_03276_TA FaceTalk_170912_03278_TA")
+    # config.set('Data Setup', 'subject_for_training',
+    #            "FaceTalk_170725_00137_TA")
     config.set('Data Setup', 'sequence_for_training',
                 "sentence01 sentence02 sentence03 sentence04 sentence05 sentence06 sentence07 sentence08 sentence09 sentence10 "
                 "sentence11 sentence12 sentence13 sentence14 sentence15 sentence16 sentence17 sentence18 sentence19 sentence20 "

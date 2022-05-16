@@ -10,6 +10,7 @@ os.environ['PYOPENGL_PLATFORM'] = 'egl'
 from voca_utils.process_voca import Data_binder, Data_generate_subseqs
 import trimesh
 from voca_utils.voca_data_cfg import get_default_config
+import torch
 
 def test():
     dataset_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca")
@@ -152,17 +153,125 @@ def split_based_on_seq():
         for seq in seqs_list:
             # print("Running on seq", seq)
             print(sub+"_"+seq)
-        # binder.run_bind_seqwise([seq], subjects)
 
 # def extract_all_seq():
 #     dataset_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca")
 #     binder = Data_binder(dataset_path)
-
 #     params = get_default_config()
 #     seqs_list = params["sequence_for_training"].split()
 #     subjects = params["all_subjects"].split()
 #     binder.run_bind_seqwise(seqs_list, subjects)
 
+
+def combine_loaded_sequence(loaded_data):
+    result_vertices_cum = []
+    pose_cum = []
+    rot_cum = []
+    trans_cum = []
+    shape_cum = []
+    exprs_cum = []
+    for subj_seq, params in loaded_data.items():
+        for frame in params:
+            result_vertices, pose, rot, trans, shape, exprs = frame
+            result_vertices_cum.append(result_vertices)
+            pose_cum.append(pose)
+            rot_cum.append(rot)
+            trans_cum.append(trans)
+            shape_cum.append(shape)
+            exprs_cum.append(exprs)
+
+    # accumulate the results
+    result_vertices_cum = np.asarray(result_vertices_cum)
+    pose_cum = np.asarray(pose_cum)
+    rot_cum = np.asarray(rot_cum)
+    trans_cum = np.asarray(trans_cum)
+    shape_cum = np.asarray(shape_cum)
+    exprs_cum = np.asarray(exprs_cum)
+
+    # make them as dict
+    data_dict = {}
+    # data_dict["optim_mesh"] = result_vertices_cum
+    data_dict["pose"] = pose_cum.squeeze(axis=1)
+    data_dict["rot"] = rot_cum.squeeze(axis=1)
+    data_dict["trans"] = trans_cum.squeeze(axis=1)
+    data_dict["shape"] = shape_cum.squeeze(axis=1)
+    data_dict["exprs"] = exprs_cum.squeeze(axis=1)
+
+    return data_dict
+
+def accumulate_dataset_results():
+    dataset_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca", "subj_seq_fitting_results_w_mean_shape")
+
+    params = get_default_config()
+    seqs_list = params["sequence_for_training"].split()
+    subjects = params["all_subjects"].split()
+
+    accumulated_dict = {}
+    i = 0
+    for sub in subjects:
+        for seq in seqs_list:
+            # print("Running on seq", seq)
+            print(sub+"_"+seq)
+            current_dataset_file = os.path.join(dataset_path, sub, sub+"_"+seq + ".pkl")
+
+            if os.path.isfile(current_dataset_file):
+                loaded_data = pickle.load(open(current_dataset_file, 'rb'), encoding="latin1")
+                data_dict = combine_loaded_sequence(loaded_data)
+                data_dict["seq_name"] = sub+"_"+seq
+
+                # add to accumulated dict
+                accumulated_dict[sub+"_"+seq] = data_dict
+                print("curren file %d", i)
+                i+=1
+            else:
+                print("File doesnt exist", current_dataset_file)
+
+
+    accumulated_extracted_file = os.path.join(dataset_path, "accumulated_extracted_nomesh_ns%d.pkl"%len(accumulated_dict))
+    # accumulated_extracted_file = os.path.join(dataset_path, "accumulated_extracted_ns%d.pkl"%len(accumulated_dict))
+    pickle.dump(accumulated_dict, open(accumulated_extracted_file, "wb"))
+    print("File out", accumulated_extracted_file)
+    print("Number of samples in the dict", len(accumulated_dict))
+
+
+
+def get_flame_face_given_expression(flame_model, exprs):
+    exprs = torch.from_numpy(exprs).float()
+    if torch.cuda.is_available():
+        exprs = exprs.cuda()
+
+    vertices = flame_model.morph(exprs).cpu().numpy()
+    return vertices
+
+
+def compute_identity_from_results():
+    dataset_path = os.path.join(os.getenv('HOME'), "projects/dataset/voca", "subj_seq_fitting_results_w_mean_shape")
+    params = get_default_config()
+    seqs_list = params["sequence_for_training"].split()
+    subjects = params["all_subjects"].split()
+
+    accumulated_extracted_file = os.path.join(dataset_path, "accumulated_extracted_nomesh_ns473.pkl")
+    loaded_data = pickle.load(open(accumulated_extracted_file, 'rb'), encoding="latin1")
+
+    subj_mean_shape = {}
+    for sub in subjects:
+        print("Running on subject", sub)
+        current_subject_seq_means = []
+        for seq in seqs_list:
+            seq_name = sub+"_"+seq
+            try:
+                current_seq_mean = loaded_data[seq_name]["shape"].mean(axis=0)
+            except:
+                print(seq_name, "doesnt exist")
+            current_subject_seq_means.append(current_seq_mean)
+
+        # find the cumulative mean
+        subj_mean_shape[sub] = np.mean(current_subject_seq_means, axis=0)
+
+    # subjwise mean shape
+    subjectwise_mean_shape_file = os.path.join(dataset_path, "subjectwise_mean_shape.pkl")
+    pickle.dump(subj_mean_shape, open(subjectwise_mean_shape_file, "wb"))
+    print("File out", subjectwise_mean_shape_file)
 
 
 if __name__ == "__main__":
@@ -171,4 +280,5 @@ if __name__ == "__main__":
     # sequence_specific_fitting()
     # fitting_voca()
     # split_based_on_seq()
-    split_based_on_seq()
+    # compute_identity_from_results()
+    accumulate_dataset_results()

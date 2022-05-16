@@ -24,4 +24,4 @@ echo 'ScriptDir' ${SCRIPT_DIR}
 echo 'CONFIG: ' ${CONFIG}
 cd ${SCRIPT_DIR}/..
 echo "Script executed from: ${PWD}"
-python ./fitting_from_dataset_persubseqwise.py -d ${CONFIG}
+python ./fitting_from_dataset_persubseqwise_noshape_optim.py -d ${CONFIG}
